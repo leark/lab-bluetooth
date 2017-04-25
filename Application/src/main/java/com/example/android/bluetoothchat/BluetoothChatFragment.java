@@ -20,6 +20,8 @@ import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -91,8 +93,11 @@ public class BluetoothChatFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
-        // TODO: Get local Bluetooth adapter
-
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(getActivity().getApplicationContext(), "Bluetooth not supported", Toast.LENGTH_LONG).show();
+            getActivity().finish();
+        }
         /**
          *  TODO: If the adapter is null, then Bluetooth is not supported.
          *  TODO: Let us know via Toast Bluetooth is not available.
@@ -109,7 +114,8 @@ public class BluetoothChatFragment extends Fragment {
             // setupChat() will then be called during onActivityResult
 
             if(!mBluetoothAdapter.isEnabled()) {
-
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                 /**
                  * TODO: If adapter is NOT enabled, send an Implicit Intent with the action ACTION_REQUEST_ENABLE (send for a result)
                  * TODO: Otherwise, check if the BluetoothChatService is null, and if so call setupChat() to set it up.
@@ -198,12 +204,14 @@ public class BluetoothChatFragment extends Fragment {
      * Makes this device discoverable.
      */
     private void ensureDiscoverable() {
-
         /**
          * TODO: Check if the adapter is in SCAN_MODE_CONNECTABLE_DISCOVERBLE mode
          * TODO: If not, send an Implicit Intent for the ACTION_REQUEST_DISCOVERABLE action (with an extra for the EXTRA_DISCOVERABLE_DURATION)
          */
-
+        if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+            Intent enableDiscover = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            enableDiscover.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        }
     }
 
     /**
@@ -228,6 +236,10 @@ public class BluetoothChatFragment extends Fragment {
              * TODO: set the mOutEditText's text to be the (now empty) mOutStringBuffer
              */
 
+            byte[] byteMsg = message.getBytes();
+            mChatService.write(byteMsg);
+            mOutStringBuffer.setLength(0);
+            mOutEditText.setText(mOutStringBuffer);
         }
     }
 
@@ -376,6 +388,10 @@ public class BluetoothChatFragment extends Fragment {
          * TODO: Then use the adapter's .getRemoteDevice() to get a reference to the device
          * TODO: Then tell the mChatService to connect to that device!
          */
+
+        String mac = data.getStringExtra(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        BluetoothDevice remoteDevice = mBluetoothAdapter.getRemoteDevice(mac);
+        mChatService.connect(remoteDevice, secure);
 
     }
 
